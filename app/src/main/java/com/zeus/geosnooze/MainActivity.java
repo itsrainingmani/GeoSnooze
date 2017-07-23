@@ -41,6 +41,7 @@ import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -52,6 +53,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     protected  static final String TAG = "MainActivity";
     private GoogleMap gMap;
     private Button locate, set, reset;
+    private Marker current;
+    private Marker destination;
     private boolean mRequestingLocationUpdates;
     private String REQUEST_LOCATIONS_UPDATES_KEY = "geosnooze";
     private FusedLocationProviderClient mFusedLocationClient;
@@ -59,6 +62,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private LocationCallback mLocationCallback;
     private LocationRequest mLocationRequest;
     final private int REQUEST_CODE_ASK_PERMISSIONS = 123;
+    private int total_num_markers = 0;
     private TextView latfield;
     private TextView longfield;
 
@@ -85,37 +89,37 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 //        latfield = (TextView) findViewById(R.id.latitudeView);
 //        longfield = (TextView) findViewById(R.id.longitudeView);
 
-//        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-//        builder = new LocationSettingsRequest.Builder().addLocationRequest(mLocationRequest);
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        builder = new LocationSettingsRequest.Builder().addLocationRequest(mLocationRequest);
+
+        SettingsClient client = LocationServices.getSettingsClient(this);
+        Task<LocationSettingsResponse> task = client.checkLocationSettings(builder.build());
 //
-//        SettingsClient client = LocationServices.getSettingsClient(this);
-//        Task<LocationSettingsResponse> task = client.checkLocationSettings(builder.build());
+        task.addOnSuccessListener(this, new OnSuccessListener<LocationSettingsResponse>() {
+            @Override
+            public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
+                // All location settings are satisfied. Client can initialize location requests
+            }
+        });
 //
-//        task.addOnSuccessListener(this, new OnSuccessListener<LocationSettingsResponse>() {
-//            @Override
-//            public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
-//                // All location settings are satisfied. Client can initialize location requests
-//            }
-//        });
-//
-//        task.addOnFailureListener(this, new OnFailureListener() {
-//            @Override
-//            public void onFailure(@NonNull Exception e) {
-//                int statusCode = ((ApiException) e).getStatusCode();
-//                switch (statusCode) {
-//                    case CommonStatusCodes.RESOLUTION_REQUIRED:
-//                        try {
-//                            ResolvableApiException resolvable = (ResolvableApiException) e;
-//                            resolvable.startResolutionForResult(MainActivity.this, REQUEST_CODE_ASK_PERMISSIONS);
-//                        } catch (IntentSender.SendIntentException sendEx) {
-//
-//                        }
-//                        break;
-//                    case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-//                        break;
-//                }
-//            }
-//        });
+        task.addOnFailureListener(this, new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                int statusCode = ((ApiException) e).getStatusCode();
+                switch (statusCode) {
+                    case CommonStatusCodes.RESOLUTION_REQUIRED:
+                        try {
+                            ResolvableApiException resolvable = (ResolvableApiException) e;
+                            resolvable.startResolutionForResult(MainActivity.this, REQUEST_CODE_ASK_PERMISSIONS);
+                        } catch (IntentSender.SendIntentException sendEx) {
+
+                        }
+                        break;
+                    case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                        break;
+                }
+            }
+        });
 
 //        mLocationCallback = new LocationCallback(){
 //            public void onLocationResult(LocationResult locationResult){
@@ -125,31 +129,33 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 //            }
 //        };
 
-//        final Button button = (Button) findViewById(R.id.button);
-//        button.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                if (android.support.v4.app.ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-//                    if (android.support.v4.app.ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)) {
-//                        showMessageOkCancel("You need location services for this app", new DialogInterface.OnClickListener() {
-//                            @Override
-//                            public void onClick(DialogInterface dialogInterface, int i) {
-//                                android.support.v4.app.ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_ASK_PERMISSIONS);
-//                            }
-//                        });
-//                    } else {
-//                        android.support.v4.app.ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_ASK_PERMISSIONS);
-//                    }
-//                }
-//                Task<Location> locationTask = mFusedLocationClient.getLastLocation().addOnSuccessListener(MainActivity.this, new OnSuccessListener<Location>() {
-//                    @Override
-//                    public void onSuccess(Location location) {
-//                        if (location != null) {
-//                            latfield.setText(Double.toString(location.getLatitude()));
-//                            longfield.setText(Double.toString(location.getLongitude()));
-//                        }
-//                    }
-//                });
+//        final Button button = (Button) findViewById(R.id.locate);
+        locate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (android.support.v4.app.ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    if (android.support.v4.app.ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                        showMessageOkCancel("You need location services for this app", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                android.support.v4.app.ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_ASK_PERMISSIONS);
+                            }
+                        });
+                    } else {
+                        android.support.v4.app.ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_ASK_PERMISSIONS);
+                    }
+                }
+                Task<Location> locationTask = mFusedLocationClient.getLastLocation().addOnSuccessListener(MainActivity.this, new OnSuccessListener<Location>() {
+                    @Override
+                    public void onSuccess(Location location) {
+                        if (location != null) {
+                            LatLng curLoc = new LatLng(location.getLatitude(), location.getLongitude());
+                            current = gMap.addMarker(new MarkerOptions().position(curLoc).title("My current location"));
+//                            gMap.addMarker(new MarkerOptions().position(current).title("My current location"));
+                            gMap.animateCamera(CameraUpdateFactory.newLatLngZoom(curLoc, 14.5f));
+                        }
+                    }
+                });
 //                mLocationCallback = new LocationCallback(){
 //                    public void onLocationResult(LocationResult locationResult){
 //                        for (Location location: locationResult.getLocations()){
@@ -160,8 +166,19 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 //                        }
 //                    }
 //                };
-//            }
-//        });
+            }
+        });
+
+        reset.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view){
+                destination.remove();
+                if (total_num_markers > 0){
+                    total_num_markers -=1;
+                }
+            }
+        });
+
 //        updateValuesFromBundle(savedInstanceState);
     }
 
@@ -174,9 +191,34 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             gMap = map;
             setUpMap();
         }
-        LatLng shenzhen = new LatLng(22.5362, 113.9454);
-        gMap.addMarker(new MarkerOptions().position(shenzhen).title("Marker in Shenzhen"));
-        gMap.moveCamera(CameraUpdateFactory.newLatLng(shenzhen));
+        if (android.support.v4.app.ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            if (android.support.v4.app.ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                showMessageOkCancel("You need location services for this app", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        android.support.v4.app.ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_ASK_PERMISSIONS);
+                    }
+                });
+            } else {
+                android.support.v4.app.ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_ASK_PERMISSIONS);
+            }
+        }
+        Task<Location> locationTask = mFusedLocationClient.getLastLocation().addOnSuccessListener(MainActivity.this, new OnSuccessListener<Location>() {
+            @Override
+            public void onSuccess(Location location) {
+                if (location != null) {
+//                    latfield.setText(Double.toString(location.getLatitude()));
+//                    longfield.setText(Double.toString(location.getLongitude()));
+//                    current = new LatLng(location.getLatitude(), location.getLongitude());
+//                    gMap.addMarker(new MarkerOptions().position(current).title("My current location"));
+                    gMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 10f));
+                }
+            }
+        });
+//        LatLng shenzhen = new LatLng(22.5362, 113.9454);
+//        gMap.addMarker(new MarkerOptions().position(shenzhen).title("Marker in Shenzhen"));
+//        gMap.moveCamera(CameraUpdateFactory.newLatLng(shenzhen));
+
     }
 
     private void setUpMap(){
@@ -185,7 +227,18 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
     @Override
     public void onMapClick(LatLng point){
+        if (total_num_markers < 1) {
+            destination = gMap.addMarker(new MarkerOptions().position(point).title("Destination"));
+//            gMap.addMarker(new MarkerOptions().position(destination).title("Destination"));
+            total_num_markers += 1;
+        }
+        else
+            showMessageOkCancel("You can only have one Destination", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
 
+                }
+            });
     }
 
     protected void onSaveInstanceState(Bundle outState) {
