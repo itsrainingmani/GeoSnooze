@@ -5,11 +5,13 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
@@ -84,17 +86,25 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-//        MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.mapView);
-//        mapFragment.getMapAsync(this);
-//        latfield = (TextView) findViewById(R.id.latitudeView);
-//        longfield = (TextView) findViewById(R.id.longitudeView);
+        if (android.support.v4.app.ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            if (android.support.v4.app.ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                showMessageOkCancel("You need location services for this app", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        android.support.v4.app.ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_ASK_PERMISSIONS);
+                    }
+                });
+            } else {
+                android.support.v4.app.ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_ASK_PERMISSIONS);
+            }
+        }
 
+        createLocationRequest();
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         builder = new LocationSettingsRequest.Builder().addLocationRequest(mLocationRequest);
-
         SettingsClient client = LocationServices.getSettingsClient(this);
         Task<LocationSettingsResponse> task = client.checkLocationSettings(builder.build());
-//
+
         task.addOnSuccessListener(this, new OnSuccessListener<LocationSettingsResponse>() {
             @Override
             public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
@@ -108,28 +118,26 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 int statusCode = ((ApiException) e).getStatusCode();
                 switch (statusCode) {
                     case CommonStatusCodes.RESOLUTION_REQUIRED:
+                        // Location settings are not satisfied, but this can be fixed
+                        // by showing the user a dialog.
                         try {
+                            // Show the dialog by calling startResolutionForResult(),
+                            // and check the result in onActivityResult().
                             ResolvableApiException resolvable = (ResolvableApiException) e;
-                            resolvable.startResolutionForResult(MainActivity.this, REQUEST_CODE_ASK_PERMISSIONS);
+                            resolvable.startResolutionForResult(MainActivity.this,
+                                    REQUEST_CODE_ASK_PERMISSIONS);
                         } catch (IntentSender.SendIntentException sendEx) {
-
+                            // Ignore the error.
                         }
                         break;
                     case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                        // Location settings are not satisfied. However, we have no way
+                        // to fix the settings so we won't show the dialog.
                         break;
                 }
             }
         });
 
-//        mLocationCallback = new LocationCallback(){
-//            public void onLocationResult(LocationResult locationResult){
-//                for (Location location: locationResult.getLocations()){
-//
-//                }
-//            }
-//        };
-
-//        final Button button = (Button) findViewById(R.id.locate);
         locate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -151,21 +159,10 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                         if (location != null) {
                             LatLng curLoc = new LatLng(location.getLatitude(), location.getLongitude());
                             current = gMap.addMarker(new MarkerOptions().position(curLoc).title("My current location"));
-//                            gMap.addMarker(new MarkerOptions().position(current).title("My current location"));
                             gMap.animateCamera(CameraUpdateFactory.newLatLngZoom(curLoc, 14.5f));
                         }
                     }
                 });
-//                mLocationCallback = new LocationCallback(){
-//                    public void onLocationResult(LocationResult locationResult){
-//                        for (Location location: locationResult.getLocations()){
-//                            if (location != null) {
-//                                latfield.setText(Double.toString(location.getLatitude()));
-//                                longfield.setText(Double.toString(location.getLongitude()));
-//                            }
-//                        }
-//                    }
-//                };
             }
         });
 
@@ -207,18 +204,10 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             @Override
             public void onSuccess(Location location) {
                 if (location != null) {
-//                    latfield.setText(Double.toString(location.getLatitude()));
-//                    longfield.setText(Double.toString(location.getLongitude()));
-//                    current = new LatLng(location.getLatitude(), location.getLongitude());
-//                    gMap.addMarker(new MarkerOptions().position(current).title("My current location"));
                     gMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 10f));
                 }
             }
         });
-//        LatLng shenzhen = new LatLng(22.5362, 113.9454);
-//        gMap.addMarker(new MarkerOptions().position(shenzhen).title("Marker in Shenzhen"));
-//        gMap.moveCamera(CameraUpdateFactory.newLatLng(shenzhen));
-
     }
 
     private void setUpMap(){
@@ -254,14 +243,14 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
     protected void OnResume() {
         super.onResume();
-        if (mRequestingLocationUpdates) {
-            startLocationUpdates();
-        }
+//        if (mRequestingLocationUpdates) {
+//            startLocationUpdates();
+//        }
     }
 
     protected void onPause(){
         super.onPause();
-        stopLocationUpdates();
+//        stopLocationUpdates();
     }
 
     protected void OnDestroy(){
@@ -273,30 +262,30 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         this.finish();
     }
 
-    private void stopLocationUpdates(){
-        mFusedLocationClient.removeLocationUpdates(mLocationCallback);
-    }
+//    private void stopLocationUpdates(){
+//        mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+//    }
 
-    private void startLocationUpdates() {
-        if (android.support.v4.app.ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && android.support.v4.app.ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
-    }
+//    private void startLocationUpdates() {
+//        if (android.support.v4.app.ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && android.support.v4.app.ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+//            // TODO: Consider calling
+//            //    ActivityCompat#requestPermissions
+//            // here to request the missing permissions, and then overriding
+//            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+//            //                                          int[] grantResults)
+//            // to handle the case where the user grants the permission. See the documentation
+//            // for ActivityCompat#requestPermissions for more details.
+//            return;
+//        }
+//        mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
+//    }
 
     private void showMessageOkCancel(String message, DialogInterface.OnClickListener okListener){
         new AlertDialog.Builder(MainActivity.this).setMessage(message).setPositiveButton("OK", okListener).setNegativeButton("Cancel", null).create().show();
     }
 
     protected void createLocationRequest(){
-        LocationRequest mLocationRequest = new LocationRequest();
+        mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(10000);
         mLocationRequest.setFastestInterval(5000);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
