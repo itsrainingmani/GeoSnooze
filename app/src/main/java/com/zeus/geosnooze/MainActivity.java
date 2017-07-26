@@ -50,7 +50,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.vision.text.Text;
 
-public class MainActivity extends FragmentActivity implements View.OnClickListener, GoogleMap.OnMapClickListener, OnMapReadyCallback{
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, GoogleMap.OnMapClickListener, OnMapReadyCallback{
 
     protected  static final String TAG = "MainActivity";
     private GoogleMap gMap;
@@ -169,8 +169,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         reset.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view){
-                destination.remove();
                 if (total_num_markers > 0){
+                    destination.remove();
                     total_num_markers -=1;
                 }
             }
@@ -216,7 +216,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
     @Override
     public void onMapClick(LatLng point){
-        if (total_num_markers < 1) {
+        if (total_num_markers == 0) {
             destination = gMap.addMarker(new MarkerOptions().position(point).title("Destination"));
 //            gMap.addMarker(new MarkerOptions().position(destination).title("Destination"));
             total_num_markers += 1;
